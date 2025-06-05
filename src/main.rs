@@ -29,12 +29,14 @@ use scoped_fs::ScopedFs;
 
 fn print_help() {
     println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    println!("{}", env!("CARGO_PKG_REPOSITORY"));
+    println!("{}", env!("CARGO_PKG_AUTHORS"));
     println!();
     println!("limn extracts files from resource bundles used in Darktide.");
     println!();
     println!("limn uses oo2core_9_win64.dll to decompress the bundle. If it fails to load");
     println!("oo2core_9_win64.dll then copy it from the Darktide binaries folder next to limn.");
+    println!();
+    println!("Project home: {}", env!("CARGO_PKG_REPOSITORY"));
     println!();
     println!("USAGE:");
     println!("limn.exe [OPTIONS] <FILTER>");
@@ -45,7 +47,7 @@ fn print_help() {
     println!("OPTIONS:");
     println!("        --dump-hashes         Dump file extension and name hashes.");
     println!("        --dump-raw            Extract files without converting contents.");
-    println!("    -i, --input               Bundle or directory of bundles to extract.");
+    println!("    -i, --input <PATH>        Bundle or directory of bundles to extract.");
     println!("    -f, --filter <FILTER>     Only extract files with matching extension.");
 }
 
