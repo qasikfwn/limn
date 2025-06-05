@@ -65,8 +65,9 @@ struct Args {
     darktide_path: Option<PathBuf>,
 }
 
-fn parse_args() -> Result<Args, lexopt::Error> {
-    use lexopt::prelude::*;
+fn parse_args() -> Args {
+    let mut args = std::env::args_os();
+    let _bin = args.next();
 
     let mut dump_hashes = false;
     let mut dump_raw = false;
@@ -75,42 +76,65 @@ fn parse_args() -> Result<Args, lexopt::Error> {
     let mut filter_ext = None;
 
     let mut num_args = 0;
-    let mut parser = lexopt::Parser::from_env();
-    while let Some(arg) = parser.next()? {
+    while let Some(arg) = args.next() {
         num_args += 1;
-        match &arg {
-            Long("dump-hashes") => dump_hashes = true,
-            Long("dump-raw") => dump_raw = true,
-            Short('i') | Long("input") => target = Some(PathBuf::from(parser.value()?)),
-            Long("help") => {
+
+        let Some(opt) = arg.to_str() else {
+            eprintln!("ERROR: invalid UTF-8 in arg {arg:?}");
+            std::process::exit(1);
+        };
+
+        match opt {
+            "--dump-hashes" => dump_hashes = true,
+
+            "--dump-raw" => dump_raw = true,
+
+            "-i" | "--input" => {
+                let Some(param) = args.next() else {
+                    eprintln!("ERROR: missing parameter to {}", opt);
+                    std::process::exit(1);
+                };
+                target = Some(PathBuf::from(param));
+            }
+
+            "--help" => {
                 print_help();
                 std::process::exit(0);
             }
 
-            Short('f') | Long("filter") => {
-                let val = &*parser.value()?;
-                let s = val.to_str()
-                    .ok_or("extension filter must be valid UTF-8")?;
-                let h = match s {
-                    "*" => None,
-                    _ => Some(hash::murmur_hash64a(s.as_bytes(), 0)),
+            filter => {
+                let _owner;
+                let ext = if opt == "-f" || opt == "--filter" {
+                    let Some(param) = args.next() else {
+                        eprintln!("ERROR: missing parameter to {}", opt);
+                        std::process::exit(1);
+                    };
+
+                    _owner = param;
+                    let Some(val) = _owner.to_str() else {
+                        eprintln!("ERROR: invalid UTF-8 in parameter to {}", opt);
+                        std::process::exit(1);
+                    };
+
+                    val
+                } else if opt.starts_with("-") {
+                    eprintln!("WARN: unknown option {}", opt);
+                    continue;
+                } else {
+                    filter
                 };
-                filter_ext = Some(h);
-            }
-            Value(val) => {
+
                 if filter_ext.is_some() {
-                    return Err(arg.unexpected());
+                    eprintln!("WARN: filter is already set, ignoring {ext:?}");
+                    continue;
                 }
 
-                let s = val.to_str()
-                    .ok_or("extension filter must be valid UTF-8")?;
-                let h = match s {
+                let h = match ext {
                     "*" => None,
-                    _ => Some(hash::murmur_hash64a(s.as_bytes(), 0)),
+                    _ => Some(hash::murmur_hash64a(ext.as_bytes(), 0)),
                 };
                 filter_ext = Some(h);
             }
-            _ => return Err(arg.unexpected()),
         }
     }
 
@@ -135,14 +159,14 @@ fn parse_args() -> Result<Args, lexopt::Error> {
         }
     });
 
-    Ok(Args {
+    Args {
         dump_hashes,
         dump_raw,
 
         target,
         filter_ext: filter_ext.flatten(),
         darktide_path: darktide_path.ok(),
-    })
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -153,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         target,
         filter_ext,
         darktide_path,
-    } = parse_args()?;
+    } = parse_args();
 
     let dictionary = fs::read_to_string("dictionary.txt");
     let (dictionary, skip_unknown) = if let Ok(data) = dictionary.as_ref() {
