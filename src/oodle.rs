@@ -27,7 +27,7 @@ type OodleLZ_Decompress = extern "C" fn(
 
 // https://github.com/jamesbloom/ozip/blob/master/ozip.cpp
 #[allow(non_camel_case_types)]
-type OodleLZDecoder_MemorySizeNeeded = unsafe extern fn(i32, i64) -> u64;
+type OodleLZDecoder_MemorySizeNeeded = unsafe extern "C" fn(i32, i64) -> u64;
 
 pub struct Oodle {
     lib: Library,
