@@ -1,6 +1,4 @@
 use std::sync::LazyLock;
-use std::hash::Hash;
-use std::hash::Hasher;
 
 pub(crate) static FILE_EXTENSION: LazyLock<[(u64, &'static str); 50]> = LazyLock::new(|| {
     let mut a = [
@@ -59,7 +57,7 @@ pub(crate) static FILE_EXTENSION: LazyLock<[(u64, &'static str); 50]> = LazyLock
     a
 });
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct MurmurHash(pub(crate) u64);
 
 impl MurmurHash {
@@ -72,26 +70,14 @@ impl MurmurHash {
     }
 }
 
-impl Hash for MurmurHash {
-    fn hash<H: Hasher>(&self, h: &mut H) {
-        h.write_u64(self.0)
-    }
-}
-
 impl From<u64> for MurmurHash {
     fn from(key: u64) -> Self {
         Self(key)
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct MurmurHash32(pub(crate) u32);
-
-impl Hash for MurmurHash32 {
-    fn hash<H: Hasher>(&self, h: &mut H) {
-        h.write_u32(self.0)
-    }
-}
 
 impl From<u32> for MurmurHash32 {
     fn from(key: u32) -> Self {
