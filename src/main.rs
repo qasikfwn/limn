@@ -184,7 +184,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut dict = HashMap::with_capacity(0x1000);
         for key in data.lines() {
             if !key.is_empty() {
-                dict.insert(MurmurHash::new(key), key);
+                dict.insert(MurmurHash::new(key), key.to_string());
             }
         }
         (dict, true)
@@ -211,11 +211,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut options = ExtractOptions {
-        target: &target,
+        target: target.clone(),
         out: out_fs,
-        oodle: &oodle,
-        dictionary: &dictionary,
-        dictionary_short: &dictionary.iter().map(|(k, v)| (k.clone_short(), *v)).collect(),
+        oodle: oodle,
+        dictionary_short: dictionary.keys().map(|k| (k.clone_short(), k.clone())).collect(),
+        dictionary: dictionary,
         skip_extract: dump_hashes,
         skip_unknown,
         as_blob: dump_raw,
@@ -257,7 +257,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             filter_ext,
         )
     } else if let Ok(bundle) = File::open(&target) {
-        options.target = target.parent().unwrap();
+        options.target = target.parent().unwrap().to_path_buf();
 
         let bundle_hash = bundle_hash_from(&target);
         let mut buf = vec![0; 0x80000];
@@ -476,7 +476,7 @@ fn extract_bundle(
     bundle_buf: &mut Vec<u8>,
     bundle_hash: Option<u64>,
     duplicates: &Mutex<HashMap<(u64, u64), u64>>,
-    options: &ExtractOptions<'_>,
+    options: &ExtractOptions,
     filter: Option<u64>,
 ) -> io::Result<u32> {
     bundle_buf.clear();
@@ -515,7 +515,7 @@ fn extract_bundle(
 
     let mut targets = targets.as_ref().map(|t| &t[..]);
     let mut count = 0;
-    let mut files = bundle.files(options.oodle, bundle_buf);
+    let mut files = bundle.files(&options.oodle, bundle_buf);
     while let Ok(Some(file)) = files.next_file().map_err(|e| panic!("{:016x} - {}", bundle_hash.unwrap_or(0), e)) {
         if options.skip_unknown
             && file.ext != /*lua*/0xa14e8dfa2cd117e2

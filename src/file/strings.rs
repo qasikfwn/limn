@@ -69,7 +69,7 @@ impl Extractor for StringsParser {
         file_path: &Path,
         shared: &mut [u8],
         shared_flex: &mut Vec<u8>,
-        options: &ExtractOptions<'_>,
+        options: &ExtractOptions,
     ) -> io::Result<u64> {
         let mut wrote = 0;
         let mut variant_i = 0;
@@ -111,7 +111,8 @@ impl Extractor for StringsParser {
             for _ in 0..num_items {
                 let short_hash = hashes.read_u32::<LE>()?;
                 let string_len = hashes.read_u32::<LE>()? as usize;
-                let do_print = if let Some(key) = options.dictionary_short.get(&short_hash.into()) {
+                let do_print = if let Some(hash) = options.dictionary_short.get(&short_hash.into()) {
+                    let key = options.dictionary.get(hash).unwrap();
                     if is_trailing {
                         write!(shared_flex, ",")?;
                     }

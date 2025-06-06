@@ -6,6 +6,7 @@ use std::io::Write;
 use std::mem;
 use std::path::Component;
 use std::path::Path;
+use std::path::PathBuf;
 use crate::bundle::Entry;
 use crate::oodle::Oodle;
 use crate::hash::MurmurHash;
@@ -38,16 +39,16 @@ trait Extractor {
         file_path: &Path,
         shared: &mut [u8],
         shared2: &mut Vec<u8>,
-        options: &ExtractOptions<'_>,
+        options: &ExtractOptions,
     ) -> io::Result<u64>;
 }
 
-pub(crate) struct ExtractOptions<'a> {
-    pub(crate) target: &'a Path,
+pub struct ExtractOptions {
+    pub(crate) target: PathBuf,
     pub(crate) out: ScopedFs,
-    pub(crate) oodle: &'a Oodle,
-    pub(crate) dictionary: &'a HashMap<MurmurHash, &'a str>,
-    pub(crate) dictionary_short: &'a HashMap<MurmurHash32, &'a str>,
+    pub(crate) oodle: Oodle,
+    pub(crate) dictionary: HashMap<MurmurHash, String>,
+    pub(crate) dictionary_short: HashMap<MurmurHash32, MurmurHash>,
     pub(crate) skip_extract: bool,
     pub(crate) skip_unknown: bool,
     pub(crate) as_blob: bool,
@@ -56,7 +57,7 @@ pub(crate) struct ExtractOptions<'a> {
 pub(crate) fn extract(
     mut entry: Entry<'_, '_>,
     pool: &mut Pool,
-    options: &ExtractOptions<'_>,
+    options: &ExtractOptions,
 ) -> io::Result<u64> {
     let extractor: Option<&'static dyn Extractor> = 'res: {Some(match entry.ext {
         0x18dead01056b72e9 => &bones::BonesParser,

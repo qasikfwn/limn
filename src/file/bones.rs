@@ -9,7 +9,7 @@ impl Extractor for BonesParser {
         file_path: &Path,
         mut shared: &mut [u8],
         mut shared_flex: &mut Vec<u8>,
-        options: &ExtractOptions<'_>,
+        options: &ExtractOptions,
     ) -> io::Result<u64> {
         let variants = entry.variants();
         assert_eq!(1, variants.len());

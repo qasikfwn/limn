@@ -21,7 +21,7 @@ impl Extractor for TextureParser {
         file_path: &Path,
         mut shared: &mut [u8],
         memory_pool: &mut Vec<u8>,
-        options: &ExtractOptions<'_>,
+        options: &ExtractOptions,
     ) -> io::Result<u64> {
         let variants = entry.variants();
         assert_eq!(1, variants.len());
@@ -39,7 +39,7 @@ impl Extractor for TextureParser {
 
                 let mut data_path = [0_u8; 31];
                 entry.read(&mut data_path[..body_size as usize]).unwrap();
-                let file = file_from_data_path(shared, options.target, &data_path).unwrap();
+                let file = file_from_data_path(shared, &options.target, &data_path).unwrap();
                 let slice;
                 (slice, shared) = shared.split_at_mut(0x10000);
                 Err(ChunkReader::new(slice, file))
@@ -147,7 +147,7 @@ impl Extractor for TextureParser {
                 let num_chunks = chunk_width * chunk_height;
                 assert!(chunks.len() >= num_chunks as usize);
 
-                let data_fd = file_from_data_path(shared, options.target, &data_path).unwrap();
+                let data_fd = file_from_data_path(shared, &options.target, &data_path).unwrap();
                 let slice;
                 (slice, _) = shared.split_at_mut(0x10000);
                 let mut data_rdr = ChunkReader::new(slice, data_fd);

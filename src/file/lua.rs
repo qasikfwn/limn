@@ -9,7 +9,7 @@ impl Extractor for LuaParser {
         _file_path: &Path,
         shared: &mut [u8],
         shared_flex: &mut Vec<u8>,
-        options: &ExtractOptions<'_>,
+        options: &ExtractOptions,
     ) -> io::Result<u64> {
         let variants = entry.variants();
         shared_flex.clear();

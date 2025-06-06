@@ -9,7 +9,7 @@ impl Extractor for MaterialParser {
         file_path: &Path,
         shared: &mut [u8],
         _shared_flex: &mut Vec<u8>,
-        options: &ExtractOptions<'_>,
+        options: &ExtractOptions,
     ) -> io::Result<u64> {
         let variants = entry.variants();
         assert_eq!(1, variants.len());
@@ -20,7 +20,7 @@ impl Extractor for MaterialParser {
         let mut data_res = {
             let (data_path, scope_shared) = shared.split_at_mut(prime.body_size as usize);
             entry.read_exact(data_path).unwrap();
-            file_from_data_path(scope_shared, options.target, data_path).unwrap()
+            file_from_data_path(scope_shared, &options.target, data_path).unwrap()
         };
 
         let mut out_fd = options.out.create(file_path)?;

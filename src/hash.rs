@@ -57,7 +57,7 @@ pub(crate) static FILE_EXTENSION: LazyLock<[(u64, &'static str); 50]> = LazyLock
     a
 });
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct MurmurHash(pub(crate) u64);
 
 impl MurmurHash {
