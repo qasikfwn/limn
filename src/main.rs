@@ -14,18 +14,14 @@ use std::panic;
 use std::path::Path;
 use std::path::PathBuf;
 
-mod bundle;
-use bundle::BundleFd;
-mod file;
-use file::ExtractOptions;
-use file::Pool;
-mod hash;
-use hash::MurmurHash;
-mod oodle;
-mod read;
-use read::ChunkReader;
-mod scoped_fs;
-use scoped_fs::ScopedFs;
+use limn::ExtractBuilder;
+use limn::bundle::BundleFd;
+use limn::file;
+use limn::file::ExtractOptions;
+use limn::file::Pool;
+use limn::hash;
+use limn::Oodle;
+use limn::read::ChunkReader;
 
 fn print_help() {
     println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
@@ -180,17 +176,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } = parse_args();
 
     let dictionary = fs::read_to_string("dictionary.txt");
-    let (dictionary, skip_unknown) = if let Ok(data) = dictionary.as_ref() {
-        let mut dict = HashMap::with_capacity(0x1000);
-        for key in data.lines() {
-            if !key.is_empty() {
-                dict.insert(MurmurHash::new(key), key.to_string());
-            }
-        }
-        (dict, true)
-    } else {
-        (HashMap::new(), false)
-    };
 
     let oodle = match load_oodle("oo2core_9_win64.dll", &target, darktide_path.as_ref())
         .or_else(|_| load_oodle("oo2core_8_win64.dll", &target, darktide_path.as_ref()))
@@ -204,26 +189,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let out_fs = if dump_hashes {
-        ScopedFs::new_null(Path::new("./out"))
-    } else {
-        ScopedFs::new(Path::new("./out"))
-    };
-
-    let mut options = ExtractOptions {
-        target: target.clone(),
-        out: out_fs,
-        oodle: oodle,
-        dictionary_short: dictionary.keys().map(|k| (k.clone_short(), k.clone())).collect(),
-        dictionary: dictionary,
-        skip_extract: dump_hashes,
-        skip_unknown,
-        as_blob: dump_raw,
-    };
+    let mut builder = ExtractBuilder::new();
+    builder.output(dump_hashes.then(|| "./out"))
+        .oodle(oodle)
+        .dump_hashes(dump_hashes)
+        .dump_raw(dump_raw);
+    if let Ok(dict) = dictionary {
+        builder.dictionary(dict.lines());
+    }
 
     let duplicates = Mutex::new(HashMap::new());
     let start = Instant::now();
+    let options;
     let num_files = if let Ok(read_dir) = fs::read_dir(&target) {
+        builder.input(target);
+        options = builder.build()?;
+
         let mut bundles = Vec::new();
         for fd in read_dir {
             let fd = fd.as_ref().unwrap();
@@ -257,7 +238,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             filter_ext,
         )
     } else if let Ok(bundle) = File::open(&target) {
-        options.target = target.parent().unwrap().to_path_buf();
+        builder.input(target.parent().unwrap().to_path_buf());
+        options = builder.build()?;
 
         let bundle_hash = bundle_hash_from(&target);
         let mut buf = vec![0; 0x80000];
@@ -280,7 +262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let ms = start.elapsed().as_millis();
         println!("DONE");
         println!("took {}.{}s", ms / 1000, ms % 1000);
-        if !options.skip_extract {
+        if !options.skip_extract() {
             println!("extracted {num_files} files");
         }
 
@@ -490,8 +472,8 @@ fn extract_bundle(
             *entry += 1;
 
             if *entry == 1 && file.ext == filter_ext {
-                if options.skip_unknown
-                    && !options.dictionary.contains_key(&MurmurHash::from(file.name))
+                if options.skip_unknown()
+                    && !options.contains_key(&file.name.into())
                 {
                     continue;
                 }
@@ -509,18 +491,18 @@ fn extract_bundle(
         None
     };
 
-    if options.skip_extract {
+    if options.skip_extract() {
         return Ok(targets.as_ref().map(|t| t.len() as u32).unwrap_or(0));
     }
 
     let mut targets = targets.as_ref().map(|t| &t[..]);
     let mut count = 0;
-    let mut files = bundle.files(&options.oodle, bundle_buf);
+    let mut files = bundle.files(options.oodle(), bundle_buf);
     while let Ok(Some(file)) = files.next_file().map_err(|e| panic!("{:016x} - {}", bundle_hash.unwrap_or(0), e)) {
-        if options.skip_unknown
+        if options.skip_unknown()
             && file.ext != /*lua*/0xa14e8dfa2cd117e2
             && !(filter == Some(file.ext) && file.ext == /*strings*/0x0d972bab10b40fd3)
-            && !options.dictionary.contains_key(&MurmurHash::from(file.name))
+            && !options.contains_key(&file.name.into())
         {
             continue;
         }
@@ -558,15 +540,15 @@ fn load_oodle(
     name: &str,
     path: &Path,
     darktide_path: Option<&PathBuf>,
-) -> Result<oodle::Oodle, io::Error> {
-    match oodle::Oodle::load(name) {
+) -> Result<Oodle, io::Error> {
+    match Oodle::load(name) {
         Ok(out) => Ok(out),
         Err(e) => {
             let oodle_path = format!("binaries/{name}");
             if let Some(oodle) = path.parent().map(|p| p.join(&oodle_path))
-                .and_then(|p| oodle::Oodle::load(p).ok())
+                .and_then(|p| Oodle::load(p).ok())
                 .or_else(|| darktide_path.map(|path| path.join(&oodle_path))
-                    .and_then(|p| oodle::Oodle::load(p).ok()))
+                    .and_then(|p| Oodle::load(p).ok()))
             {
                 Ok(oodle)
             } else {

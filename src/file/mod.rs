@@ -54,7 +54,25 @@ pub struct ExtractOptions {
     pub(crate) as_blob: bool,
 }
 
-pub(crate) fn extract(
+impl ExtractOptions {
+    pub fn oodle(&self) -> &Oodle {
+        &self.oodle
+    }
+
+    pub fn contains_key(&self, key: &MurmurHash) -> bool {
+        self.dictionary.contains_key(key)
+    }
+
+    pub fn skip_extract(&self) -> bool {
+        self.skip_extract
+    }
+
+    pub fn skip_unknown(&self) -> bool {
+        self.skip_unknown
+    }
+}
+
+pub fn extract(
     mut entry: Entry<'_, '_>,
     pool: &mut Pool,
     options: &ExtractOptions,
@@ -119,13 +137,13 @@ pub(crate) fn extract(
 }
 
 // second shared buffer is necessary for resizing after slices have been made
-pub(crate) struct Pool {
+pub struct Pool {
     shared: Vec<u8>,
     shared2: Vec<u8>,
 }
 
 impl Pool {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             shared: Vec::new(),
             shared2: Vec::new(),
