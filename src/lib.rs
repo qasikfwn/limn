@@ -1,6 +1,9 @@
+use std::cell::Cell;
 use std::collections::HashMap;
+use std::io;
 use std::path::Path;
 use std::path::PathBuf;
+use std::panic::RefUnwindSafe;
 
 pub mod bundle;
 pub mod file;
@@ -61,6 +64,14 @@ impl ExtractBuilder {
         self
     }
 
+    pub fn output_custom(
+        &mut self,
+        cb: impl Fn(&str, &[u8]) + Send + Sync + RefUnwindSafe + 'static,
+    ) -> &mut Self {
+        self.output = Some(Box::new(BufOutput(cb)));
+        self
+    }
+
     pub fn oodle(&mut self, oodle: Oodle) -> &mut Self {
         self.oodle = Some(oodle);
         self
@@ -106,5 +117,32 @@ impl ExtractBuilder {
             skip_unknown,
             as_blob: self.dump_raw,
         })
+    }
+}
+
+struct BufOutput<T>(T)
+where
+    T: Fn(&str, &[u8]) + Send + Sync + RefUnwindSafe
+;
+
+impl<T> FileOpen for BufOutput<T>
+where
+    T: Fn(&str, &[u8]) + Send + Sync + RefUnwindSafe
+{
+    fn open(
+        &self,
+        path: &Path,
+        scope: &mut dyn FnMut(&mut dyn io::Write) -> io::Result<u64>,
+    ) -> io::Result<u64> {
+        thread_local!(static BUFFER: Cell<Vec<u8>> = Cell::new(Vec::new()));
+
+        let mut buffer = BUFFER.take();
+        let res = scope(&mut buffer)?;
+        self.0(
+            path.to_str().unwrap(),
+            &buffer,
+        );
+        BUFFER.set(buffer);
+        Ok(res)
     }
 }
