@@ -4,6 +4,14 @@ use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
+pub(crate) trait FileOpen: Send + Sync + std::panic::RefUnwindSafe {
+    fn open(
+        &self,
+        path: &Path,
+        scope: &mut dyn FnMut(&mut dyn io::Write) -> io::Result<u64>,
+    ) -> io::Result<u64>;
+}
+
 pub(crate) struct ScopedFs {
     root: PathBuf,
     is_null: bool,
@@ -50,44 +58,19 @@ impl ScopedFs {
         }
         Ok(out)
     }
-
-    pub(crate) fn write(&self, path: &Path, data: &[u8]) -> io::Result<()> {
-        if self.is_null {
-            Ok(())
-        } else {
-            let path = self.format_path(path)?;
-            fs::write(path, data)
-        }
-    }
-
-    pub(crate) fn create(&self, path: &Path) -> io::Result<impl io::Write> {
-        if self.is_null {
-            Ok(ScopedFd(None))
-        } else {
-            let path = self.format_path(path)?;
-            Ok(ScopedFd(Some(fs::File::create(path)?)))
-        }
-    }
 }
 
-pub(crate) struct ScopedFd(Option<fs::File>);
-
-impl io::Write for ScopedFd {
-    #[inline]
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        if let Some(fd) = self.0.as_mut() {
-            fd.write(data)
+impl FileOpen for ScopedFs {
+    fn open(
+        &self,
+        path: &Path,
+        scope: &mut dyn FnMut(&mut dyn io::Write) -> io::Result<u64>,
+    ) -> io::Result<u64> {
+        if self.is_null {
+            scope(&mut io::sink())
         } else {
-            Ok(data.len())
-        }
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        if let Some(fd) = self.0.as_mut() {
-            fd.flush()
-        } else {
-            Ok(())
+            let path = self.format_path(path)?;
+            scope(&mut fs::File::create(path)?)
         }
     }
 }
@@ -99,7 +82,7 @@ mod test {
     #[test]
     #[should_panic]
     fn scope() {
-        let scope = ScopedFs(PathBuf::from("sandbox"));
-        let _ = scope.create(Path::new("../target/test.bin"));
+        let scope = ScopedFs::new(&Path::new("sandbox"));
+        let _ = scope.open(Path::new("../target/test.bin"), &mut |_| Ok(0));
     }
 }

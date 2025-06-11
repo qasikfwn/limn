@@ -12,11 +12,12 @@ mod oodle;
 pub use oodle::Oodle;
 pub mod read;
 mod scoped_fs;
+use scoped_fs::FileOpen;
 use scoped_fs::ScopedFs;
 
 pub struct ExtractBuilder {
     input: Option<PathBuf>,
-    output: Option<ScopedFs>,
+    output: Option<Box<dyn FileOpen>>,
     oodle: Option<Oodle>,
     dictionary: Option<HashMap<MurmurHash, String>>,
     dictionary_short: Option<HashMap<MurmurHash32, MurmurHash>>,
@@ -56,7 +57,7 @@ impl ExtractBuilder {
             ScopedFs::new_null(&Path::new("./out"))
         };
 
-        self.output = Some(scoped_fs);
+        self.output = Some(Box::new(scoped_fs));
         self
     }
 

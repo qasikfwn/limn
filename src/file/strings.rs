@@ -178,9 +178,8 @@ impl Extractor for StringsParser {
             let file = write_help!(&mut shared, "{stem}.{lang}");
             let parent = file_path.parent().unwrap();
             let path = path_concat(parent, &mut shared, file, Some("json"));
-            options.out.write(path, &shared_flex)?;
 
-            wrote += shared_flex.len() as u64;
+            wrote += options.write(path, &shared_flex)?;
         }
 
         Ok(wrote)

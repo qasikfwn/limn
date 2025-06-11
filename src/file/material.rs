@@ -23,7 +23,8 @@ impl Extractor for MaterialParser {
             file_from_data_path(scope_shared, &options.target, data_path).unwrap()
         };
 
-        let mut out_fd = options.out.create(file_path)?;
-        io::copy(&mut data_res, &mut out_fd)
+        options.open(file_path, |out| {
+            io::copy(&mut data_res, out)
+        })
     }
 }

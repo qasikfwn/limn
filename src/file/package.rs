@@ -50,8 +50,6 @@ impl Extractor for PackageParser {
         let parent = file_path.parent().unwrap();
         let stem = file_path.file_stem().unwrap().to_str().unwrap();
         let path = path_concat(parent, &mut shared, stem, Some("package.json"));
-        options.out.write(path, &shared_flex)?;
-
-        Ok(shared_flex.len() as u64)
+        options.write(path, &shared_flex)
     }
 }

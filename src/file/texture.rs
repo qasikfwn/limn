@@ -84,12 +84,11 @@ impl Extractor for TextureParser {
             let file_name = file_path.file_stem().unwrap().to_str().unwrap();
             let out_path = path_concat(parent, &mut shared, file_name, Some("dds"));
 
-            let wrote = if meta_size == 0 {
+            if meta_size == 0 {
                 let _unknown = rdr.read_u32::<LE>().unwrap();
                 assert!(rdr.read_u8().is_err());
 
-                options.out.write(out_path, &out_buf)?;
-                out_buf.len() as u64
+                options.write(out_path, &out_buf)
             } else {
                 assert!(has_high_res);
                 assert_eq!(0x44583130_u32.swap_bytes(), fourcc);
@@ -149,24 +148,25 @@ impl Extractor for TextureParser {
 
                 let data_fd = file_from_data_path(shared, &options.target, &data_path).unwrap();
                 let slice;
-                (slice, _) = shared.split_at_mut(0x10000);
+                (slice, shared) = shared.split_at_mut(0x10000);
                 let mut data_rdr = ChunkReader::new(slice, data_fd);
 
-                let mut out_fd = options.out.create(out_path)?;
-                out_fd.write_all(&out_buf[..148]).unwrap();
-                148 + sort_write_texture_chunks(
-                    memory_pool,
-                    &options.oodle,
-                    &mut data_rdr,
-                    &chunks[..num_chunks as usize],
-                    chunk_width,
-                    chunk_width_pixel,
-                    block_size,
-                    pitch,
-                    &mut out_fd,
-                )
-            };
-            Ok(wrote)
+                shared[..148].copy_from_slice(&out_buf[..148]);
+                options.open(out_path, |out| {
+                    out.write_all(&shared[..148])?;
+                    Ok(148 + sort_write_texture_chunks(
+                        memory_pool,
+                        &options.oodle,
+                        &mut data_rdr,
+                        &chunks[..num_chunks as usize],
+                        chunk_width,
+                        chunk_width_pixel,
+                        block_size,
+                        pitch,
+                        out,
+                    ))
+                })
+            }
         } else if kind == 0 {
             //for _ in 0..8 {
             //    rdr.read_u8().unwrap();
@@ -213,7 +213,7 @@ fn sort_write_texture_chunks(
     chunk_width_pixel: u32,
     block_size: u32,
     pitch: u32,
-    out_fd: &mut impl io::Write,
+    out_fd: &mut dyn io::Write,
 ) -> u64 {
     let window_size = (pitch * 64) as usize;
     let ([in_buf, out_buf, scratch, window], _) = split_vec(memory_pool,

@@ -44,8 +44,6 @@ impl Extractor for LuaParser {
 
         io::copy(&mut entry, &mut *shared_flex).unwrap();
 
-        options.out.write(lua_path.as_ref(), &shared_flex)?;
-
-        Ok(shared_flex.len() as u64)
+        options.write(lua_path.as_ref(), &shared_flex)
     }
 }
