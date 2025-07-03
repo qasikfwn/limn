@@ -188,8 +188,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    let output = if dump_hashes {
+        None
+    } else {
+        Some(output)
+    };
+
     let mut builder = ExtractBuilder::new();
-    builder.output(dump_hashes.then(|| "./out"))
+    builder.output(output)
         .oodle(oodle)
         .dump_hashes(dump_hashes)
         .dump_raw(dump_raw);
