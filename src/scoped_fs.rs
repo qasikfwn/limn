@@ -36,7 +36,6 @@ impl ScopedFs {
         Self::new_(root, false)
     }
 
-    #[allow(dead_code)]
     pub(crate) fn new_null(root: &Path) -> Self {
         Self::new_(root, true)
     }
