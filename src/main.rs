@@ -44,6 +44,7 @@ fn print_help() {
     println!("        --dump-hashes         Dump file extension and name hashes.");
     println!("        --dump-raw            Extract files without converting contents.");
     println!("    -i, --input <PATH>        Bundle or directory of bundles to extract.");
+    println!("    -o, --output <PATH>       Extract output directory. Default is `out`.");
     println!("    -f, --filter <FILTER>     Only extract files with matching extension.");
 }
 
@@ -55,6 +56,8 @@ struct Args {
 
     // path to bundle OR directory of bundles
     target: PathBuf,
+
+    output: PathBuf,
 
     filter_ext: Option<u64>,
 
@@ -69,6 +72,7 @@ fn parse_args() -> Args {
     let mut dump_raw = false;
 
     let mut target = None;
+    let mut output = None;
     let mut filter_ext = None;
 
     let mut num_args = 0;
@@ -91,6 +95,14 @@ fn parse_args() -> Args {
                     std::process::exit(1);
                 };
                 target = Some(PathBuf::from(param));
+            }
+
+            "-o" | "--output" => {
+                let Some(param) = args.next() else {
+                    eprintln!("ERROR: missing parameter to {}", opt);
+                    std::process::exit(1);
+                };
+                output = Some(PathBuf::from(param));
             }
 
             "--help" => {
@@ -154,11 +166,14 @@ fn parse_args() -> Args {
         }
     });
 
+    let output = output.unwrap_or_else(|| PathBuf::from("./out"));
+
     Args {
         dump_hashes,
         dump_raw,
 
         target,
+        output,
         filter_ext: filter_ext.flatten(),
         darktide_path: darktide_path.ok(),
     }
@@ -170,6 +185,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         dump_raw,
 
         target,
+        output,
         filter_ext,
         darktide_path,
     } = parse_args();
