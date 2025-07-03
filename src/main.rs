@@ -125,11 +125,10 @@ fn parse_args() -> Args {
                     continue;
                 }
 
-                let h = match ext {
-                    "*" => None,
-                    _ => Some(hash::murmur_hash64a(ext.as_bytes(), 0)),
-                };
-                filter_ext = Some(h);
+                match ext {
+                    "*" => (),
+                    _ => filter_ext = Some(Some(hash::murmur_hash64a(ext.as_bytes(), 0))),
+                }
             }
         }
     }
