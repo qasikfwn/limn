@@ -1,40 +1,45 @@
 use std::fmt;
 use super::*;
 
+#[allow(dead_code)]
 #[repr(u32)]
 enum Language {
-    English,
-    Spanish,
-    French,
-    Polish,
-    German,
-    Japanese,
-    English2,
-    Italian,
-    Korean,
     ChineseTraditional,
-    Russian,
-    Portuguese,
     ChineseSimplified,
+    English,
+    English2,
+    French,
+    German,
+    Italian,
+    Japanese,
+    Korean,
+    Polish,
+    Portuguese,
+    Russian,
+    Spanish,
 }
 
 impl Language {
+    // Language codes can change between updates. The codes here are best effort
+    // and are likely incorrect.
+    //
+    // TODO find where language ids map to codes at runtime
     fn from_code(code: u32) -> Option<Self> {
         debug_assert!(code == 0 || code.is_power_of_two());
         Some(match code {
             0    => Self::English,
-            1    => Self::Spanish,
-            2    => Self::French,
-            4    => Self::Polish,
-            8    => Self::German,
-            16   => Self::Japanese,
-            32   => Self::English2,
-            64   => Self::Italian,
-            128  => Self::Korean,
-            256  => Self::ChineseTraditional,
-            512  => Self::Russian,
-            1024 => Self::Portuguese,
-            2048 => Self::ChineseSimplified,
+            //1    => Self::Polish,
+            //2    => Self::Japanese,
+            //4    => Self::Spanish,
+            //8    => Self::English2,
+            //16   => Self::ChineseTraditional,
+            //32   => Self::Portuguese,
+            //64   => Self::German,
+            //128  => Self::Korean,
+            //256  => Self::Russian,
+            //512  => Self::Italian,
+            //1024 => Self::ChineseSimplified,
+            //2048 => Self::French,
             _ => return None,
         })
     }
@@ -43,19 +48,19 @@ impl Language {
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
+            Self::ChineseTraditional => "chinese_traditional",
+            Self::ChineseSimplified  => "chinese_simplified",
             Self::English            => "english",
             Self::English2           => "english2",
-            Self::ChineseSimplified  => "chinese_simplified",
-            Self::Italian            => "italian",
-            Self::ChineseTraditional => "chinese_traditional",
-            Self::Portuguese         => "portuguese",
-            Self::Polish             => "polish",
-            Self::Russian            => "russian",
-            Self::Korean             => "korean",
-            Self::Spanish            => "spanish",
-            Self::German             => "german",
-            Self::Japanese           => "japanese",
             Self::French             => "french",
+            Self::German             => "german",
+            Self::Italian            => "italian",
+            Self::Japanese           => "japanese",
+            Self::Korean             => "korean",
+            Self::Polish             => "polish",
+            Self::Portuguese         => "portuguese",
+            Self::Russian            => "russian",
+            Self::Spanish            => "spanish",
         })
     }
 }
@@ -171,7 +176,7 @@ impl Extractor for StringsParser {
             let lang = if let Some(lang) = Language::from_code(kind) {
                 write_help!(&mut shared, "{lang}")
             } else {
-                write_help!(&mut shared, "{kind:016x}")
+                write_help!(&mut shared, "{kind:04x}")
             };
 
             let stem = file_path.file_stem().unwrap().to_str().unwrap();
