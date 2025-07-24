@@ -43,6 +43,7 @@ fn print_help() {
     println!("OPTIONS:");
     println!("        --dump-hashes         Dump file extension and name hashes.");
     println!("        --dump-raw            Extract files without converting contents.");
+    println!("        --dict <PATH>         Load dictionary. Default is `dictionary.txt`.");
     println!("    -i, --input <PATH>        Bundle or directory of bundles to extract.");
     println!("    -o, --output <PATH>       Extract output directory. Default is `out`.");
     println!("    -f, --filter <FILTER>     Only extract files with matching extension.");
@@ -56,6 +57,8 @@ struct Args {
 
     // path to bundle OR directory of bundles
     target: PathBuf,
+
+    dictionary: Vec<PathBuf>,
 
     output: PathBuf,
 
@@ -71,6 +74,7 @@ fn parse_args() -> Args {
     let mut dump_hashes = false;
     let mut dump_raw = false;
 
+    let mut dictionary = Vec::new();
     let mut target = None;
     let mut output = None;
     let mut filter_ext = None;
@@ -88,6 +92,14 @@ fn parse_args() -> Args {
             "--dump-hashes" => dump_hashes = true,
 
             "--dump-raw" => dump_raw = true,
+
+            "--dict" => {
+                let Some(param) = args.next() else {
+                    eprintln!("ERROR: missing parameter to {}", opt);
+                    std::process::exit(1);
+                };
+                dictionary.push(PathBuf::from(param));
+            }
 
             "-i" | "--input" => {
                 let Some(param) = args.next() else {
@@ -172,6 +184,7 @@ fn parse_args() -> Args {
         dump_hashes,
         dump_raw,
 
+        dictionary,
         target,
         output,
         filter_ext: filter_ext.flatten(),
@@ -184,13 +197,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         dump_hashes,
         dump_raw,
 
+        dictionary,
         target,
         output,
         filter_ext,
         darktide_path,
     } = parse_args();
 
-    let dictionary = fs::read_to_string("dictionary.txt");
+    let mut dictionary_load = Vec::new();
+    if dictionary.is_empty() {
+        if let Ok(dict) = fs::read_to_string("dictionary.txt") {
+            dictionary_load.push(dict);
+        }
+    } else {
+        let mut failed = false;
+        for path in dictionary {
+            let Ok(dict) = fs::read_to_string(&path) else {
+                eprintln!("ERROR: failed to load dictionary \"{}\"", path.display());
+                failed = true;
+                continue;
+            };
+            dictionary_load.push(dict);
+        }
+
+        if failed {
+            std::process::exit(1);
+        }
+    }
 
     let oodle = match load_oodle("oo2core_9_win64.dll", &target, darktide_path.as_ref())
         .or_else(|_| load_oodle("oo2core_8_win64.dll", &target, darktide_path.as_ref()))
@@ -215,7 +248,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .oodle(oodle)
         .dump_hashes(dump_hashes)
         .dump_raw(dump_raw);
-    if let Ok(dict) = dictionary {
+    for dict in dictionary_load {
         builder.dictionary(dict.lines());
     }
 
