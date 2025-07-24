@@ -84,8 +84,17 @@ impl ExtractBuilder {
         let mut dict = HashMap::with_capacity(0x10000);
         let mut dict_short = HashMap::with_capacity(0x10000);
         for key in keys {
-            let key = key.into();
-            let hash = MurmurHash::new(&key);
+            let mut key = key.into();
+            let hash = if let Some(map) = key.strip_prefix("@")
+                && let Some((hash_s, key_to)) = map.split_once("=")
+                && hash_s.len() == 16
+                && let Ok(hash) = u64::from_str_radix(hash_s, 16)
+            {
+                key = key_to.to_string();
+                MurmurHash(hash)
+            } else {
+                MurmurHash::new(&key)
+            };
             dict.insert(hash.clone(), key);
             dict_short.insert(hash.clone_short(), hash);
         }
