@@ -3,4 +3,5 @@
 /target
 oo2core*
 Cargo.lock
+dictionary.txt
 hashes.bin
