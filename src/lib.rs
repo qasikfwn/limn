@@ -81,8 +81,8 @@ impl ExtractBuilder {
         &mut self,
         keys: impl Iterator<Item = T>,
     ) -> &mut Self {
-        let mut dict = HashMap::with_capacity(0x10000);
-        let mut dict_short = HashMap::with_capacity(0x10000);
+        let dict = self.dictionary.get_or_insert_default();
+        let dict_short = self.dictionary_short.get_or_insert_default();
         for key in keys {
             let mut key = key.into();
             let hash = if let Some(map) = key.strip_prefix("@")
@@ -98,8 +98,6 @@ impl ExtractBuilder {
             dict.insert(hash.clone(), key);
             dict_short.insert(hash.clone_short(), hash);
         }
-        self.dictionary = Some(dict);
-        self.dictionary_short = Some(dict_short);
         self
     }
 
