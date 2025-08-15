@@ -25,6 +25,7 @@ pub struct ExtractBuilder {
     dictionary: Option<HashMap<MurmurHash, String>>,
     dictionary_short: Option<HashMap<MurmurHash32, MurmurHash>>,
 
+    skip_unknown: Option<bool>,
     dump_hashes: bool,
     dump_raw: bool,
 }
@@ -37,6 +38,7 @@ impl ExtractBuilder {
             oodle: None,
             dictionary: None,
             dictionary_short: None,
+            skip_unknown: None,
             dump_hashes: false,
             dump_raw: false,
         }
@@ -101,6 +103,11 @@ impl ExtractBuilder {
         self
     }
 
+    pub fn skip_unknown(&mut self, toggle: bool) -> &mut Self {
+        self.skip_unknown = Some(toggle);
+        self
+    }
+
     pub fn dump_hashes(&mut self, toggle: bool) -> &mut Self {
         self.dump_hashes = toggle;
         self
@@ -112,7 +119,7 @@ impl ExtractBuilder {
     }
 
     pub fn build(self) -> Result<ExtractOptions, &'static str> {
-        let skip_unknown = self.dictionary.is_some();
+        let skip_unknown = self.skip_unknown.unwrap_or(self.dictionary.is_some());
 
         Ok(ExtractOptions {
             target: self.input.ok_or("missing input")?,

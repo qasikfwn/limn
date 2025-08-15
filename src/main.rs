@@ -45,6 +45,7 @@ fn print_help() {
     println!("        --dump-hashes         Dump file extension and name hashes.");
     println!("        --dump-raw            Extract files without converting contents.");
     println!("        --dict <PATH>         Load dictionary. Default is `dictionary.txt`.");
+    println!("        --dict-no-skip        Extract unknown files when using a dictionary.");
     println!("    -i, --input <PATH>        Bundle or directory of bundles to extract.");
     println!("    -o, --output <PATH>       Extract output directory. Default is `out`.");
     println!("    -f, --filter <FILTER>     Only extract files with matching extension.");
@@ -61,6 +62,8 @@ struct Args {
 
     dictionary: Vec<PathBuf>,
 
+    dict_no_skip: bool,
+
     output: PathBuf,
 
     filter_ext: HashSet<u64>,
@@ -76,6 +79,7 @@ fn parse_args() -> Args {
     let mut dump_raw = false;
 
     let mut dictionary = Vec::new();
+    let mut dict_no_skip = false;
     let mut target = None;
     let mut output = None;
     let mut filter_ext = HashSet::new();
@@ -101,6 +105,8 @@ fn parse_args() -> Args {
                 };
                 dictionary.push(PathBuf::from(param));
             }
+
+            "--dict-no-skip" => dict_no_skip = true,
 
             "-i" | "--input" => {
                 let Some(param) = args.next() else {
@@ -185,6 +191,7 @@ fn parse_args() -> Args {
         dump_raw,
 
         dictionary,
+        dict_no_skip,
         target,
         output,
         filter_ext,
@@ -198,6 +205,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         dump_raw,
 
         dictionary,
+        dict_no_skip,
         target,
         output,
         filter_ext,
@@ -250,6 +258,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .dump_raw(dump_raw);
     for dict in dictionary_load {
         builder.dictionary(dict.lines());
+    }
+    if dict_no_skip {
+        builder.skip_unknown(false);
     }
 
     let duplicates = Mutex::new(HashMap::new());
