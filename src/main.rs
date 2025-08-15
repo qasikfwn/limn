@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -62,7 +63,7 @@ struct Args {
 
     output: PathBuf,
 
-    filter_ext: Option<u64>,
+    filter_ext: HashSet<u64>,
 
     darktide_path: Option<PathBuf>,
 }
@@ -77,7 +78,7 @@ fn parse_args() -> Args {
     let mut dictionary = Vec::new();
     let mut target = None;
     let mut output = None;
-    let mut filter_ext = None;
+    let mut filter_ext = HashSet::new();
 
     let mut num_args = 0;
     while let Some(arg) = args.next() {
@@ -144,14 +145,13 @@ fn parse_args() -> Args {
                     filter
                 };
 
-                if filter_ext.is_some() {
-                    eprintln!("WARN: filter is already set, ignoring {ext:?}");
-                    continue;
-                }
-
                 match ext {
-                    "*" => (),
-                    _ => filter_ext = Some(Some(hash::murmur_hash64a(ext.as_bytes(), 0))),
+                    "*" => if !filter_ext.is_empty() {
+                        eprintln!("WARN: wildcard filter conflicts with existing filters, ignoring");
+                    },
+                    _ => if !filter_ext.insert(hash::murmur_hash64a(ext.as_bytes(), 0)) {
+                        eprintln!("WARN: filter {ext:?} already used");
+                    },
                 }
             }
         }
@@ -163,8 +163,8 @@ fn parse_args() -> Args {
     }
 
     // hack to signal dupe/hash tracking
-    if dump_hashes && filter_ext.is_none() {
-        filter_ext = Some(Some(0));
+    if dump_hashes && filter_ext.is_empty() {
+        filter_ext.insert(0);
     }
 
     let darktide_path = steam_find::get_steam_app(1361210).map(|app| app.path);
@@ -187,7 +187,7 @@ fn parse_args() -> Args {
         dictionary,
         target,
         output,
-        filter_ext: filter_ext.flatten(),
+        filter_ext,
         darktide_path: darktide_path.ok(),
     }
 }
@@ -289,7 +289,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &bundles,
             &duplicates,
             &options,
-            filter_ext,
+            &filter_ext,
         )
     } else if let Ok(bundle) = File::open(&target) {
         builder.input(target.parent().unwrap().to_path_buf());
@@ -305,7 +305,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             bundle_hash,
             &duplicates,
             &options,
-            filter_ext,
+            &filter_ext,
         ).unwrap())
     } else {
         panic!("PATH argument was invalid");
@@ -327,25 +327,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|(hashes, _count)| hashes)
                 .collect::<Vec<_>>();
             dupes.sort();
-            let mut dupes = &dupes[..];
-            if let Some(filter) = filter_ext.filter(|f| *f != 0) {
-                let start = dupes.partition_point(|(ext, _)| *ext < filter);
-                let end = dupes.partition_point(|(ext, _)| *ext <= filter);
-                dupes = &dupes[start..end];
-            }
-            //let mut out = String::with_capacity((dupes.len() + 2) * (16 + 1 + 16 + 1));
-            //out.push_str("name,extension\n");
-            //for (ext, name) in &dupes {
-            //    writeln!(&mut out, "{name:016x},{ext:016x}").unwrap();
-            //}
-            //fs::write("hashes.csv", &out)?;
             let mut bin = Vec::with_capacity(dupes.len() * 16);
-            for (ext, name) in dupes {
-                bin.extend_from_slice(&ext.to_le_bytes());
-                bin.extend_from_slice(&name.to_le_bytes());
+            if filter_ext.is_empty() {
+                for (ext, name) in &dupes {
+                    bin.extend_from_slice(&ext.to_le_bytes());
+                    bin.extend_from_slice(&name.to_le_bytes());
+                }
+            } else {
+                for filter in &filter_ext {
+                    let start = dupes.partition_point(|(ext, _)| *ext < *filter);
+                    let end = dupes.partition_point(|(ext, _)| *ext <= *filter);
+                    for (ext, name) in &dupes[start..end] {
+                        bin.extend_from_slice(&ext.to_le_bytes());
+                        bin.extend_from_slice(&name.to_le_bytes());
+                    }
+                }
             }
             fs::write("hashes.bin", &bin)?;
-            println!("{} file extension and name hashes written to \"hashes.bin\"", dupes.len());
+            println!("{} file extension and name hashes written to \"hashes.bin\"", bin.len() / 16);
         }
     } else {
         // TODO app exit code
@@ -360,7 +359,7 @@ fn batch_threads(
     bundles: &[(PathBuf, u64)],
     duplicates: &Mutex<HashMap<(u64, u64), u64>>,
     options: &ExtractOptions,
-    filter: Option<u64>,
+    filter_ext: &HashSet<u64>,
 ) -> Option<u32> {
     let bundle_index = Arc::new(AtomicUsize::new(0));
     let thread_errors = Arc::new(Mutex::new(Vec::with_capacity(num_threads)));
@@ -397,7 +396,7 @@ fn batch_threads(
                     &bundle_index,
                     &duplicates,
                     &options,
-                    filter,
+                    filter_ext,
                 ))
             }));
         }
@@ -480,7 +479,7 @@ fn thread_work(
     bundle_index: &AtomicUsize,
     duplicates: &Mutex<HashMap<(u64, u64), u64>>,
     options: &ExtractOptions,
-    filter: Option<u64>,
+    filter_ext: &HashSet<u64>,
 ) -> u32 {
     let mut pool = Pool::new();
     let mut buffer_reader = vec![0_u8; 0x80000];
@@ -499,7 +498,7 @@ fn thread_work(
             Some(*bundle_hash),
             &duplicates,
             &options,
-            filter,
+            filter_ext,
         ).unwrap();
     }
 
@@ -513,11 +512,11 @@ fn extract_bundle(
     bundle_hash: Option<u64>,
     duplicates: &Mutex<HashMap<(u64, u64), u64>>,
     options: &ExtractOptions,
-    filter: Option<u64>,
+    filter_ext: &HashSet<u64>,
 ) -> io::Result<u32> {
     bundle_buf.clear();
     let mut bundle = BundleFd::new(bundle_hash, &mut rdr)?;
-    let targets = if let Some(filter_ext) = filter {
+    let targets = if !filter_ext.is_empty() {
         let mut targets = Vec::new();
         let mut dupes = duplicates.lock().unwrap();
         for file in bundle.index() {
@@ -525,7 +524,7 @@ fn extract_bundle(
             let entry = dupes.entry(key).or_insert(0);
             *entry += 1;
 
-            if *entry == 1 && file.ext == filter_ext {
+            if *entry == 1 && filter_ext.contains(&file.ext) {
                 if options.skip_unknown()
                     && !options.contains_key(&file.name.into())
                 {
@@ -555,7 +554,7 @@ fn extract_bundle(
     while let Ok(Some(file)) = files.next_file().map_err(|e| panic!("{:016x} - {}", bundle_hash.unwrap_or(0), e)) {
         if options.skip_unknown()
             && file.ext != /*lua*/0xa14e8dfa2cd117e2
-            && !(filter == Some(file.ext) && file.ext == /*strings*/0x0d972bab10b40fd3)
+            && !(filter_ext.contains(&file.ext) && file.ext == /*strings*/0x0d972bab10b40fd3)
             && !options.contains_key(&file.name.into())
         {
             continue;
