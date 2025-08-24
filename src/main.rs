@@ -339,12 +339,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect::<Vec<_>>();
             dupes.sort();
             let mut bin = Vec::with_capacity(dupes.len() * 16);
-            if filter_ext.is_empty() {
+            if filter_ext.len() == 1 && filter_ext.contains(&0) {
+                // no --filter args given
                 for (ext, name) in &dupes {
                     bin.extend_from_slice(&ext.to_le_bytes());
                     bin.extend_from_slice(&name.to_le_bytes());
                 }
             } else {
+                // --filter arg(s) given
                 for filter in &filter_ext {
                     let start = dupes.partition_point(|(ext, _)| *ext < *filter);
                     let end = dupes.partition_point(|(ext, _)| *ext <= *filter);
