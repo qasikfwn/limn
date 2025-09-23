@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
@@ -24,6 +25,7 @@ pub struct ExtractBuilder {
     oodle: Option<Oodle>,
     dictionary: Option<HashMap<MurmurHash, String>>,
     dictionary_short: Option<HashMap<MurmurHash32, MurmurHash>>,
+    config: HashSet<String>,
 
     skip_unknown: Option<bool>,
     dump_hashes: bool,
@@ -38,6 +40,7 @@ impl ExtractBuilder {
             oodle: None,
             dictionary: None,
             dictionary_short: None,
+            config: HashSet::new(),
             skip_unknown: None,
             dump_hashes: false,
             dump_raw: false,
@@ -118,6 +121,15 @@ impl ExtractBuilder {
         self
     }
 
+    pub fn config(&mut self, key: &str, enable: bool) -> &mut Self {
+        if !enable {
+            self.config.remove(key);
+        } else if enable && !self.config.contains(key) {
+            self.config.insert(key.to_string());
+        }
+        self
+    }
+
     pub fn build(self) -> Result<ExtractOptions, &'static str> {
         let skip_unknown = self.skip_unknown.unwrap_or(self.dictionary.is_some());
 
@@ -127,6 +139,7 @@ impl ExtractBuilder {
             oodle: self.oodle.ok_or("missing oodle")?,
             dictionary: self.dictionary.unwrap_or_default(),
             dictionary_short: self.dictionary_short.unwrap_or_default(),
+            config: self.config,
             skip_extract: self.dump_hashes,
             skip_unknown,
             as_blob: self.dump_raw,

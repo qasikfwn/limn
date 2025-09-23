@@ -22,13 +22,15 @@ impl Extractor for LuaParser {
         let _ = entry.read_u32::<LE>();
 
         let mut header = entry.read_u32::<LE>().unwrap();
-        if header == 2 {
+        let has_source = if header == 2 {
             let _ = entry.read_u32::<LE>();
             let _ = entry.read_u32::<LE>();
             header = entry.read_u32::<LE>().unwrap();
+            true
         } else {
             file_len = body_size;
-        }
+            false
+        };
         let file_len = file_len as u64;
         assert!(header == 38423579 || header == 2186495515, "{:016x}.lua has unexpected header {header:08x}", entry.name);
 
@@ -52,7 +54,14 @@ impl Extractor for LuaParser {
         }
         let lua_path = std::str::from_utf8(&slice).unwrap();
 
-        io::copy(&mut entry.take(file_len - shared_flex.len() as u64), &mut *shared_flex).unwrap();
+        if has_source && options.config.contains("extract-lua-source") {
+            io::copy(&mut entry.take(file_len - shared_flex.len() as u64), &mut io::sink()).unwrap();
+
+            shared_flex.clear();
+            io::copy(&mut entry, &mut *shared_flex).unwrap();
+        } else {
+            io::copy(&mut entry.take(file_len - shared_flex.len() as u64), &mut *shared_flex).unwrap();
+        }
 
         options.write(lua_path.as_ref(), &shared_flex)
     }

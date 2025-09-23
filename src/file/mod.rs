@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io;
 use std::io::Read;
@@ -49,6 +50,7 @@ pub struct ExtractOptions {
     pub(crate) oodle: Oodle,
     pub(crate) dictionary: HashMap<MurmurHash, String>,
     pub(crate) dictionary_short: HashMap<MurmurHash32, MurmurHash>,
+    pub(crate) config: HashSet<String>,
     pub(crate) skip_extract: bool,
     pub(crate) skip_unknown: bool,
     pub(crate) as_blob: bool,

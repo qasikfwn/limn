@@ -49,6 +49,7 @@ fn print_help() {
     println!("    -i, --input <PATH>        Bundle or directory of bundles to extract.");
     println!("    -o, --output <PATH>       Extract output directory. Default is `out`.");
     println!("    -f, --filter <FILTER>     Only extract files with matching extension.");
+    println!("    -c, --config <CONFIG>     Comma delimited config options (extract-lua-source).");
 }
 
 struct Args {
@@ -69,6 +70,8 @@ struct Args {
     filter_ext: HashSet<u64>,
 
     darktide_path: Option<PathBuf>,
+
+    config: Vec<String>,
 }
 
 fn parse_args() -> Args {
@@ -83,6 +86,7 @@ fn parse_args() -> Args {
     let mut target = None;
     let mut output = None;
     let mut filter_ext = HashSet::new();
+    let mut config = Vec::new();
 
     let mut num_args = 0;
     while let Some(arg) = args.next() {
@@ -122,6 +126,22 @@ fn parse_args() -> Args {
                     std::process::exit(1);
                 };
                 output = Some(PathBuf::from(param));
+            }
+
+            "-c" | "--config" => {
+                let Some(param) = args.next() else {
+                    eprintln!("ERROR: missing parameter to {}", opt);
+                    std::process::exit(1);
+                };
+
+                let Some(val) = param.to_str() else {
+                    eprintln!("ERROR: invalid UTF-8 in parameter to {}", opt);
+                    std::process::exit(1);
+                };
+
+                for key in val.split(",") {
+                    config.push(key.to_string());
+                }
             }
 
             "--help" => {
@@ -196,6 +216,7 @@ fn parse_args() -> Args {
         output,
         filter_ext,
         darktide_path: darktide_path.ok(),
+        config,
     }
 }
 
@@ -210,6 +231,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output,
         filter_ext,
         darktide_path,
+        config,
     } = parse_args();
 
     let mut dictionary_load = Vec::new();
@@ -261,6 +283,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     if dict_no_skip {
         builder.skip_unknown(false);
+    }
+
+    for key in config {
+        builder.config(&key, true);
     }
 
     let duplicates = Mutex::new(HashMap::new());
