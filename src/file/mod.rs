@@ -38,7 +38,7 @@ trait Extractor {
         &self,
         entry: &mut Entry<'_, '_>,
         file_path: &Path,
-        shared: &mut [u8],
+        shared: &mut Vec<u8>,
         shared2: &mut Vec<u8>,
         options: &ExtractOptions,
     ) -> io::Result<u64>;
@@ -111,24 +111,25 @@ pub fn extract(
     let Pool {
         shared,
         shared2,
+        path_buf,
     } = pool;
+    let mut path_buf = &mut path_buf[..];
     if shared.len() < 0x100000 {
         shared.resize(0x100000, 0);
     }
-    let mut shared = &mut shared[..];
 
     let file_name = match options.dictionary.get(&MurmurHash::from(entry.name)) {
         Some(s) => s,
-        None => write_help!(&mut shared, "{:016x}", entry.name),
+        None => write_help!(&mut path_buf, "{:016x}", entry.name),
     };
 
     let ext_name = match FILE_EXTENSION.binary_search_by(|probe| probe.0.cmp(&entry.ext)) {
         Ok(i) => FILE_EXTENSION[i].1,
-        Err(_) => write_help!(&mut shared, "{:016x}", entry.ext),
+        Err(_) => write_help!(&mut path_buf, "{:016x}", entry.ext),
     };
 
     if options.as_blob || extractor.is_none() {
-        let path = path_concat(&Path::new("."), &mut shared, file_name, Some(ext_name));
+        let path = path_concat(&Path::new("."), &mut path_buf, file_name, Some(ext_name));
 
         shared2.clear();
         shared2.reserve(0x1000);
@@ -151,7 +152,7 @@ pub fn extract(
             io::copy(&mut entry, out).map(|copied| copied + shared2.len() as u64)
         })
     } else {
-        let out = path_concat(&Path::new("."), &mut shared, file_name, Some(ext_name));
+        let out = path_concat(&Path::new("."), &mut path_buf, file_name, Some(ext_name));
 
         let extractor = extractor.unwrap();
         extractor.extract(&mut entry, out, shared, shared2, options)
@@ -162,6 +163,7 @@ pub fn extract(
 pub struct Pool {
     shared: Vec<u8>,
     shared2: Vec<u8>,
+    path_buf: Vec<u8>
 }
 
 impl Pool {
@@ -169,6 +171,7 @@ impl Pool {
         Self {
             shared: Vec::new(),
             shared2: Vec::new(),
+            path_buf: vec![0; 0x4000],
         }
     }
 }

@@ -7,7 +7,7 @@ impl Extractor for LuaParser {
         &self,
         mut entry: &mut Entry<'_, '_>,
         _file_path: &Path,
-        shared: &mut [u8],
+        shared: &mut Vec<u8>,
         shared_flex: &mut Vec<u8>,
         options: &ExtractOptions,
     ) -> io::Result<u64> {

@@ -7,7 +7,7 @@ impl Extractor for MaterialParser {
         &self,
         entry: &mut Entry<'_, '_>,
         file_path: &Path,
-        shared: &mut [u8],
+        shared: &mut Vec<u8>,
         _shared_flex: &mut Vec<u8>,
         options: &ExtractOptions,
     ) -> io::Result<u64> {

@@ -9,10 +9,11 @@ impl Extractor for PackageParser {
         &self,
         entry: &mut Entry<'_, '_>,
         file_path: &Path,
-        mut shared: &mut [u8],
+        shared: &mut Vec<u8>,
         mut shared_flex: &mut Vec<u8>,
         options: &ExtractOptions,
     ) -> io::Result<u64> {
+        let mut shared = &mut shared[..];
         let variants = entry.variants();
         assert_eq!(1, variants.len());
         shared_flex.clear();

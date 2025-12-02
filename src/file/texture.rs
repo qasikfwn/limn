@@ -19,10 +19,11 @@ impl Extractor for TextureParser {
         &self,
         entry: &mut Entry<'_, '_>,
         file_path: &Path,
-        mut shared: &mut [u8],
+        shared: &mut Vec<u8>,
         memory_pool: &mut Vec<u8>,
         options: &ExtractOptions,
     ) -> io::Result<u64> {
+        let mut shared = &mut shared[..];
         let variants = entry.variants();
         assert_eq!(1, variants.len());
         let prime = &variants[0];
