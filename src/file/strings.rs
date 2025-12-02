@@ -79,7 +79,6 @@ impl Extractor for StringsParser {
         let mut wrote = 0;
         let mut variant_i = 0;
         while let Some(variant) = entry.variants().get(variant_i) {
-            let mut shared = &mut shared[..];
             variant_i += 1;
             let kind = variant.kind;
             let variant_size = variant.body_size;
@@ -89,7 +88,10 @@ impl Extractor for StringsParser {
             let num_items = entry.read_u32::<LE>()?;
             let mut offset = 8;
             let size_needed = num_items as usize * 8;
-            assert!(shared.len() > (size_needed + 0x1000), "{}, {size_needed}", shared.len());
+            if shared.len() < size_needed + 0x1000 {
+                shared.resize(size_needed + 0x1000, 0);
+            }
+            let mut shared = &mut shared[..];
             let (hashes, buffer) = shared.split_at_mut(size_needed);
             let mut hashes_into = &mut hashes[..];
             let mut last = None;
