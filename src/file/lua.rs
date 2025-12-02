@@ -34,14 +34,15 @@ impl Extractor for LuaParser {
         let file_len = file_len as u64;
         assert!(header == 38423579 || header == 2186495515, "{:016x}.lua has unexpected header {header:08x}", entry.name);
 
-        assert_eq!(entry.read_u8().unwrap(), 0);
+        let flags = entry.read_u8().unwrap();
+        debug_assert!(flags == 0 || flags == 8);
         let path_len = leb128::read::unsigned(&mut entry).unwrap();
         assert_eq!(entry.read_u8().unwrap(), b'@');
         let len = path_len as usize - 1;
 
         // always write valid LuaJIT header
         shared_flex.write_u32::<LE>(38423579).unwrap();
-        shared_flex.write_u8(0).unwrap();
+        shared_flex.write_u8(flags).unwrap();
         leb128::write::unsigned(&mut *shared_flex, path_len).unwrap();
         shared_flex.write_u8(b'@').unwrap();
 
