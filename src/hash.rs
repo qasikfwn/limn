@@ -58,7 +58,7 @@ pub(crate) static FILE_EXTENSION: LazyLock<[(u64, &'static str); 50]> = LazyLock
 });
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct MurmurHash(pub(crate) u64);
+pub struct MurmurHash(pub u64);
 
 impl MurmurHash {
     pub fn new<T: AsRef<[u8]>>(key: T) -> Self {
@@ -77,7 +77,7 @@ impl From<u64> for MurmurHash {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct MurmurHash32(pub(crate) u32);
+pub struct MurmurHash32(pub u32);
 
 impl From<u32> for MurmurHash32 {
     fn from(key: u32) -> Self {
