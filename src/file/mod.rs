@@ -61,6 +61,10 @@ impl ExtractOptions {
         &self.oodle
     }
 
+    pub fn input(&self) -> &Path {
+        &self.target
+    }
+
     pub fn contains_key(&self, key: &MurmurHash) -> bool {
         self.dictionary.contains_key(key)
     }
