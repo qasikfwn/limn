@@ -164,6 +164,7 @@ where
         thread_local!(static BUFFER: Cell<Vec<u8>> = Cell::new(Vec::new()));
 
         let mut buffer = BUFFER.take();
+        buffer.clear();
         let res = scope(&mut buffer)?;
         self.0(
             path.to_str().unwrap(),

@@ -79,6 +79,7 @@ impl<'a> BundleFd<'a> {
     }
 
     pub fn files<'b>(&'b mut self, oodle: &'b oodle::Oodle, scratch: &'b mut Vec<u8>) -> FilesIter<'b> {
+        scratch.clear();
         let num_files = self.num_files;
         FilesIter::new(self.reader(oodle, scratch), num_files)
     }
