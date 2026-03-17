@@ -83,10 +83,12 @@ impl Extractor for StringsParser {
             let kind = variant.kind;
             let variant_size = variant.body_size;
 
-            let _unk = entry.read_u32::<LE>()?;
-            //assert_eq!(_unk, 0x3e85f3ae);
+            // removed as of Darktide 1.11.0
+            //let _unk = entry.read_u32::<LE>()?;
+            ////assert_eq!(_unk, 0x3e85f3ae);
+
             let num_items = entry.read_u32::<LE>()?;
-            let mut offset = 8;
+            let mut offset = 4;
             let size_needed = num_items as usize * 8;
             if shared.len() < size_needed + 0x1000 {
                 shared.resize(size_needed + 0x1000, 0);
