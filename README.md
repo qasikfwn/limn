@@ -1,7 +1,11 @@
 limn
 =====
 
-Extractor for the bundle format used in the game Warhammer 40k Darktide.
+limn is an extractor for the bundle format used in the game Warhammer 40k Darktide.
+
+### Linux Support
+
+limn requires Wine on Linux since it loads the compression library used by Darktide.
 
 ## Examples
 
