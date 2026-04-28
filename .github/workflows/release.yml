@@ -35,12 +35,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [linux, win]
+        build: [win]
         include:
-        - build: linux
-          os: ubuntu-latest
-          rust: nightly
-          target: x86_64-unknown-linux-musl
+        # - build: linux
+        #   os: ubuntu-latest
+        #   rust: nightly
+        #   target: x86_64-unknown-linux-musl
         - build: win
           os: windows-latest
           rust: nightly
