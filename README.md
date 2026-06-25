@@ -28,9 +28,17 @@ See `limn --help` for more options.
 
 ## Dictionary
 
-If a file named `dictionary.txt` is placed next `limn.exe` it will be used for reverse hash lookup.
+By default limn reads the file `dictionary.txt` for reverse hash lookup.
 
-Currently when limn is using a dictionary it will only extract files that it is able to find a name for.
+To use a specific dictionary:
+```
+limn --dict dictionary_hashcat_dt.txt *
+```
+
+[qasikfwn](https://github.com/qasikfwn) ([GitLab](https://gitlab.com/qasikfwn)) has a high quality dictionary as part of [Bitsquid Blender Tools](https://gitlab.com/qasikfwn/bitsquid-blender-tools).
+[Download `dictionary_hashcat_dt.txt`](https://gitlab.com/qasikfwn/bitsquid-blender-tools/-/raw/dev/bitsquid/murmur/dictionaries/dictionary_hashcat_dt.txt) from the `dev` branch.
+
+Note: when using a dictionary limn will currently only extract files with known names.
 
 ## Supported File Types
 
