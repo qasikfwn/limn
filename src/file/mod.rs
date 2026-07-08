@@ -24,6 +24,7 @@ mod material;
 mod package;
 mod strings;
 mod texture;
+mod wwise;
 
 macro_rules! write_help {
     ($dst:expr, $($arg:tt)*) => {{
@@ -109,6 +110,7 @@ pub fn extract(
         0xad9c6d9ed1e5e77a => &package::PackageParser,
         0x0d972bab10b40fd3 => &strings::StringsParser,
         0xcd4238c6a0c69e32 => &texture::TextureParser,
+        0x504b55235d21440e => &wwise::WwiseStreamParser,
         _ => break 'res None,
     })};
 

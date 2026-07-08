@@ -71,3 +71,13 @@ For converting DDS to PNG [texconv](https://github.com/Microsoft/DirectXTex/wiki
 texconv -ft bmp -f B8G8R8A8_UNORM -y texture_file.dds
 ffmpeg -i texture_file.BMP texture_file.png
 ```
+
+### wwise_stream
+
+Converts Wwise Vorbis streams to Ogg Vorbis.
+Other types of streams are sliently ignored.
+
+To extract the original Wwise streams as `bnk` files use `--config force-bnk`:
+```
+limn --config force-bnk wwise_stream
+```
