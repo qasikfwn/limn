@@ -49,6 +49,7 @@ fn print_help() {
     println!("    -i, --input <PATH>        Bundle or directory of bundles to extract.");
     println!("    -o, --output <PATH>       Extract output directory. Default is `out`.");
     println!("    -f, --filter <FILTER>     Only extract files with matching extension.");
+    println!("    -j, --threads <COUNT>     Thread count to use. Default is system thread count.");
     println!("    -c, --config <CONFIG>     Comma delimited config options (extract-lua-source).");
 }
 
@@ -71,6 +72,8 @@ struct Args {
 
     darktide_path: Option<PathBuf>,
 
+    num_threads: Option<usize>,
+
     config: Vec<String>,
 }
 
@@ -86,6 +89,7 @@ fn parse_args() -> Args {
     let mut target = None;
     let mut output = None;
     let mut filter_ext = HashSet::new();
+    let mut num_threads = None;
     let mut config = Vec::new();
 
     let mut num_args = 0;
@@ -126,6 +130,24 @@ fn parse_args() -> Args {
                     std::process::exit(1);
                 };
                 output = Some(PathBuf::from(param));
+            }
+
+            "-j" | "--threads" => {
+                let Some(param) = args.next() else {
+                    eprintln!("ERROR: missing parameter to {}", opt);
+                    std::process::exit(1);
+                };
+
+                let Some(val) = param.to_str() else {
+                    eprintln!("ERROR: invalid integer as parameter to {}", opt);
+                    std::process::exit(1);
+                };
+
+                let Ok(num_threads_) = usize::from_str_radix(val, 10) else {
+                    eprintln!("ERROR: invalid integer as parameter to {}", opt);
+                    std::process::exit(1);
+                };
+                num_threads = Some(num_threads_)
             }
 
             "-c" | "--config" => {
@@ -216,6 +238,7 @@ fn parse_args() -> Args {
         output,
         filter_ext,
         darktide_path: darktide_path.ok(),
+        num_threads,
         config,
     }
 }
@@ -231,6 +254,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output,
         filter_ext,
         darktide_path,
+        num_threads,
         config,
     } = parse_args();
 
@@ -312,11 +336,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let num_threads = thread::available_parallelism()
-            .map(|i| i.get())
-            .unwrap_or(0)
-            .saturating_sub(1)
-            .max(1);
+        let num_threads = if let Some(num_threads) = num_threads {
+            num_threads
+        } else {
+            thread::available_parallelism()
+                .map(|i| i.get())
+                .unwrap_or(0)
+                .saturating_sub(1)
+                .max(1)
+        };
 
         let mut dupes = duplicates.lock().unwrap();
         dupes.reserve(0x10000);
