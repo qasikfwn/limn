@@ -862,10 +862,10 @@ impl Extractor for WwiseStreamParser {
         _ = shared;
         let mut rdr = ChunkReader::new(slice, file);
 
-        if options.config.contains("force-bnk") {
+        if options.config.contains("force-wem") {
             let parent = file_path.parent().unwrap_or(Path::new("."));
             let file_name = file_path.file_stem().unwrap().to_str().unwrap();
-            let out_path = path_concat(parent, &mut shared, file_name, Some("bnk"));
+            let out_path = path_concat(parent, &mut shared, file_name, Some("wem"));
 
             return options.open(out_path, |mut fd| {
                 io::copy(&mut rdr, &mut fd)

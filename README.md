@@ -77,7 +77,7 @@ ffmpeg -i texture_file.BMP texture_file.png
 Converts Wwise Vorbis streams to Ogg Vorbis.
 Other types of streams are sliently ignored.
 
-To extract the original Wwise streams as `bnk` files use `--config force-bnk`:
+To extract the original Wwise streams as `wem` files use `--config force-wem`:
 ```
-limn --config force-bnk wwise_stream
+limn --config force-wem wwise_stream
 ```
