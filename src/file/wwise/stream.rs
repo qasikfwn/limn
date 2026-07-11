@@ -113,7 +113,7 @@ impl<'a> BitIo<'a> {
         }
     }
 
-    fn read(&mut self, mut bits: u32) -> u32 {
+    fn read(&mut self, bits: u32) -> u32 {
         assert!(bits != 0 && bits <= 32);
 
         let mut offset = 0;
@@ -123,20 +123,31 @@ impl<'a> BitIo<'a> {
             let mask = self.mask(bits.min(7));
             out = (self.rtmp >> roffset) & mask;
             offset = (8 - roffset).min(bits);
-            bits -= offset;
         }
 
-        while bits >= 8 {
+        let diff = bits - offset;
+        if diff == 32 {
+            assert!(offset == 0);
+            out |= self.reader.read_u32::<LE>().unwrap();
+            offset += 32;
+        } else if diff >= 24 {
+            out |= self.reader.read_u24::<LE>().unwrap() << offset;
+            offset += 24;
+        } else if diff >= 16 {
+            out |= u32::from(self.reader.read_u16::<LE>().unwrap()) << offset;
+            offset += 16;
+        } else if diff >= 8 {
             out |= u32::from(self.reader.read_u8().unwrap()) << offset;
             offset += 8;
-            bits -= 8;
         }
 
-        if bits > 0 {
-            let mask = self.mask(bits);
+        let diff = bits - offset;
+        if diff > 0 {
+            assert!(diff < 8);
+            let mask = self.mask(diff);
             self.rtmp = self.reader.read_u8().unwrap().into();
             out |= (self.rtmp & mask) << offset;
-            offset += bits;
+            offset += diff;
         }
 
         self.roffset += offset;
@@ -186,10 +197,12 @@ impl<'a> BitIo<'a> {
         out
     }
 
-    fn copy(&mut self, size: usize) {
-        for _ in 0..size {
-            let b = self.read(1);
-            self.write(b, 1);
+    fn copy(&mut self, mut size: usize) {
+        while size > 0 {
+            let bits = size.min(32) as u32;
+            let b = self.read(bits);
+            self.write(b, bits);
+            size -= bits as usize;
         }
     }
 
